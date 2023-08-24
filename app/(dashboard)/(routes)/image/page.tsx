@@ -2,7 +2,7 @@
 
 import axios from "axios"
 import { useRouter } from "next/navigation"
-import { ImageIcon, MessageSquare } from 'lucide-react'
+import { Download, ImageIcon, MessageSquare } from 'lucide-react'
 import React from 'react'
 import Heading from '@/components/heading'
 import { set, useForm } from 'react-hook-form'
@@ -19,8 +19,15 @@ import { UserAvatar } from "@/components/user-avatar"
 import { BotAvatar } from "@/components/bot-avatar"
 import { Select, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { SelectContent } from "@radix-ui/react-select"
+import { Card, CardFooter } from "@/components/ui/card"
+import Image from "next/image"
+import { useProModal } from "@/hooks/use-pro-modal"
+import { toast } from "react-hot-toast"
 
 export default function ImagePage() {
+
+  const proModal = useProModal();
+
   const router = useRouter();
   const [images, setImages] = React.useState<string[]>([]);
   const form = useForm<z.infer<typeof formSchema>>({
@@ -37,6 +44,8 @@ export default function ImagePage() {
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     try{
       setImages([]);
+
+      console.log(values)
       const response = await axios.post("/api/image", values)
 
       const urls = response.data.map((image: {url: string}) => image.url);
@@ -46,8 +55,11 @@ export default function ImagePage() {
 
       form.reset();
     } catch (error: any) {
-      //TODO: Open Pro Modal
-      console.log(error)
+      if(error?.response?.error === 403){
+        proModal.onOpen();
+      } else {
+        toast.error(error?.message || "Something went wrong.")
+      }
     } finally{
       router.refresh();
     }
@@ -123,12 +135,14 @@ export default function ImagePage() {
 <FormField
             control={form.control}
             name="resolution"
-            render={({field}) => (<FormItem className="col-span-12 lg:col-span-2">
+            render={({field}) => (
+            <FormItem className="col-span-12 lg:col-span-2">
               <Select
               disabled={isLoading}
               onValueChange={field.onChange}
               value={field.value}
-              defaultValue={field.value}>
+              defaultValue={field.value}
+              >
 
               
               <FormControl>
@@ -161,8 +175,33 @@ export default function ImagePage() {
             <Empty label="No images generated"/>
           )
         }
-        <div>
-          Images will be rendered here
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mt-8">
+          {
+            images.map((src) => (
+              <Card
+              key={src}
+              className="rounded-lg overflow-hidden"
+              >
+                <div className="relative aspect-square">
+                    <Image 
+                    alt="Image"
+                    fill
+                    src={src}
+                    />
+                </div>  
+                <CardFooter className="p-2">
+                  <Button
+                  onClick={() => window.open(src)} 
+                  variant="secondary" 
+                  className="w-full"
+                  >
+                    <Download  className="h-4 w-4 mr-2"/>
+                    Download
+                  </Button>
+                </CardFooter>
+              </Card>
+            ))
+          }
         </div>
       </div>
     </div>

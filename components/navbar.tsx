@@ -4,10 +4,16 @@ import { Menu } from 'lucide-react'
 import { UserButton } from '@clerk/nextjs'
 import MobileSidebar from './mobile-sidebar'
 
-const NavBar = () => {
+const NavBar = ({
+  apiLimitCount = 0,
+  isPro
+}:{
+  apiLimitCount: number,
+  isPro: boolean,
+}) => {
   return (
     <div className="flex items-center p-4">
-        <MobileSidebar />
+        <MobileSidebar apiLimitCount={apiLimitCount} isPro={isPro}/>
         <div className="flex w-full justify-end">
             <UserButton afterSignOutUrl='/'/>
         </div>

@@ -12,16 +12,19 @@ import { Form, FormControl, FormField, FormItem } from "@/components/ui/form"
 import { formSchema } from "./constants"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
-import { ChatCompletionRequestMessage } from "openai"
 import Empty from "@/components/empty"
 import Loader from "@/components/loader"
 import { cn } from "@/lib/utils"
 import { UserAvatar } from "@/components/user-avatar"
 import { BotAvatar } from "@/components/bot-avatar"
+import { ChatCompletionMessage } from "openai/resources/chat"
+import { useProModal } from "@/hooks/use-pro-modal"
+import { toast } from "react-hot-toast"
 
 export default function ConversationPage() {
+  const proModal = useProModal();
   const router = useRouter();
-  const [messages, setMessages] = React.useState<ChatCompletionRequestMessage[]>([]);
+  const [messages, setMessages] = React.useState<ChatCompletionMessage[]>([]);
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -33,7 +36,7 @@ export default function ConversationPage() {
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     try{
-      const userMessage: ChatCompletionRequestMessage = {
+      const userMessage: ChatCompletionMessage = {
         role: "user",
         content: values.prompt,
       };
@@ -46,8 +49,11 @@ export default function ConversationPage() {
 
       form.reset();
     } catch (error: any) {
-      //TODO: Open Pro Modal
-      console.log(error)
+      if (error?.response?.status == 403) {
+        proModal.onOpen();
+      } else {
+        toast.error(error?.message || "Something went wrong.")
+      }
     } finally{
       router.refresh();
     }

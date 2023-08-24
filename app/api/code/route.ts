@@ -1,16 +1,17 @@
+import { checkApiLimit, increaseApiLimit } from "@/lib/api-limit";
 import { auth } from "@clerk/nextjs";
 import { NextResponse } from "next/server";
-import { Configuration, OpenAIApi } from "openai";
+import OpenAI from "openai";
+import { ChatCompletionMessage } from "openai/resources/chat";
 
-const configuration = new Configuration({
+const configuration = {
     apiKey: process.env.OPENAI_API_KEY,
-});
+};
 
-const openai = new OpenAIApi(configuration);
 
-const instructionMessage: ChatCompletionRequestMessage = {
+const instructionMessage:ChatCompletionMessage = {
     role: "system",
-    content: "You are a code generator. You must answer only in markdown code snippers. Use code comments for explanations"
+    content: "You are a code generator. You must answer only in markdown code snippets. Use code comments for explanations"
 }
 
 export const POST = async (
@@ -22,15 +23,23 @@ export const POST = async (
 
     try{
         if(!userId) return new NextResponse("Unauthorized", { status: 401 });
-        if(!configuration.apiKey) return new NextResponse("OpenAi API Key not configured", {status: 500});
-        if(!messages) return new NextResponse("Messages are required", {status: 400});
+        if(!configuration.apiKey) return new NextResponse("OpenAi API Key not configured", { status: 500 });
+        if(!messages) return new NextResponse("Messages are required", { status: 400 });
 
-        const response = await openai.createChatCompletion({
+        const freeTrial = await checkApiLimit();
+
+        if(!freeTrial) return new NextResponse("You have exceeded the free trial limit", { status: 403 });
+
+        const openai = new OpenAI(configuration)
+
+        const completion: OpenAI.Chat.ChatCompletion = await openai.chat.completions.create({
             model: "gpt-3.5-turbo",
             messages: [instructionMessage, ...messages]
         });
 
-        return NextResponse.json(response.data.choices[0].message);
+        await increaseApiLimit();
+
+        return NextResponse.json(completion.choices[0].message, { status: 200 });
     }catch(error){
         console.log("[CODE_ERROR]", error);
         return new NextResponse("Internal Server Error", { status: 500 });
